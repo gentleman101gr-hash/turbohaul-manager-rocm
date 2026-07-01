@@ -150,10 +150,11 @@ export HSA_ENABLE_DXG_DETECTION=1
 export LD_LIBRARY_PATH=/opt/rocm/lib:/usr/lib/wsl/lib
 
 # Create config
+sudo mkdir -p /etc/turbohaul
 sudo mkdir -p /var/lib/turbohaul/{blobs,manifests,import-staging}
 sudo chown -R $USER:$USER /var/lib/turbohaul
 
-cat > /etc/turbohaul/turbohaul.yaml << 'EOF'
+sudo tee /etc/turbohaul/turbohaul.yaml > /dev/null << 'EOF'
 server:
   host: 127.0.0.1
   port: 11401
@@ -309,9 +310,13 @@ curl http://localhost:11401/health
 
 ## Troubleshooting
 
-### rocm-smi: ambiguous option `--showpid`
+### rocm-smi: unrecognized arguments
 
-Use `--showpids` (plural). The GPU backend uses the correct flag.
+The GPU backend uses `--showpids` (plural) for process scanning. If you see errors from rocm-smi about unrecognized arguments, make sure you're using the version shipped with your ROCm install (`/opt/rocm/bin/rocm-smi`), not a system package.
+
+### "Driver not initialized (amdgpu not found in modules)"
+
+This is a cosmetic warning from rocm-smi when it can't fully query the driver during backend detection. It's harmless — turbohaul-manager degrades gracefully and the GPU still works for inference. If you want a clean startup, set `HSA_TOOLS_DISABLE_REGISTER=1` in your environment before starting turbohaul-manager.
 
 ### DNS rebind false positive on HuggingFace pulls
 
