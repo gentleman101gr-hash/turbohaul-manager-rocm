@@ -45,6 +45,13 @@ run_sudo() {
   fi
 }
 
+# -- Resolve real user home (handles sudo where $HOME=/root) ------------------
+if [ -n "${SUDO_USER:-}" ]; then
+  REAL_HOME=$(eval echo "~$SUDO_USER")
+else
+  REAL_HOME="$HOME"
+fi
+
 # -- Password check -----------------------------------------------------------
 # Check if sudo works without password. If not, warn the user.
 SUDO_OK=true
@@ -153,16 +160,16 @@ fi
 # -- Step 5: Build llama.cpp with ROCm ----------------------------------------
 step "Step 5: Build llama.cpp with ROCm/HIP"
 
-LLAMA_BIN="$HOME/llama.cpp/build/bin/llama-server"
+LLAMA_BIN="$REAL_HOME/llama.cpp/build/bin/llama-server"
 if [ -x "$LLAMA_BIN" ]; then
   skip "llama-server already built at $LLAMA_BIN"
 else
-  if [ ! -d "$HOME/llama.cpp" ]; then
+  if [ ! -d "$REAL_HOME/llama.cpp" ]; then
     echo "  Cloning llama.cpp..."
-    git clone --depth 1 https://github.com/ggml-org/llama.cpp.git "$HOME/llama.cpp"
+    git clone --depth 1 https://github.com/ggml-org/llama.cpp.git "$REAL_HOME/llama.cpp"
   fi
   echo "  Building llama.cpp with GGML_HIP=ON..."
-  cd "$HOME/llama.cpp"
+  cd "$REAL_HOME/llama.cpp"
   cmake -B build -DGGML_HIP=ON 2>&1 | tail -1
   cmake --build build -j$(nproc) 2>&1 | tail -1
   if [ -x "$LLAMA_BIN" ]; then
@@ -177,8 +184,8 @@ step "Step 6: Install turbohaul-manager"
 
 # Find turbohaul-manager repo: check common locations
 SEARCH_DIRS=(
-  "$HOME/oc/oc036-turbohaulamd/turbohaul-manager"
-  "$HOME/turbohaul-manager"
+  "$REAL_HOME/oc/oc036-turbohaulamd/turbohaul-manager"
+  "$REAL_HOME/turbohaul-manager"
   "/mnt/c/Users/gentl/oc/oc036-turbohaulamd/turbohaul-manager"
   "$(dirname "$0")"
   "$(pwd)"
@@ -279,17 +286,17 @@ HAS_MODEL=false
 HAS_MANIFEST=false
 
 # Check for any GGUF in models dir
-if ls "$HOME"/models/*.gguf 2>/dev/null | head -1 > /dev/null 2>&1; then
+if ls "$REAL_HOME"/models/*.gguf 2>/dev/null | head -1 > /dev/null 2>&1; then
   HAS_MODEL=true
-  MODEL_FILE=$(ls "$HOME"/models/*.gguf | head -1)
+  MODEL_FILE=$(ls "$REAL_HOME"/models/*.gguf | head -1)
   ok "Model found: $(basename "$MODEL_FILE")"
 else
   echo "  No GGUF model found in ~/models/"
   echo "  Downloading Qwen2.5-3B-Instruct Q4_K_M (~1.8 GB)..."
-  mkdir -p "$HOME/models"
-  wget -q -O "$HOME/models/qwen2.5-3b-q4_k_m.gguf" \
+  mkdir -p "$REAL_HOME/models"
+  wget -q -O "$REAL_HOME/models/qwen2.5-3b-q4_k_m.gguf" \
     "https://huggingface.co/bartowski/Qwen2.5-3B-Instruct-GGUF/resolve/main/Qwen2.5-3B-Instruct-Q4_K_M.gguf"
-  MODEL_FILE="$HOME/models/qwen2.5-3b-q4_k_m.gguf"
+  MODEL_FILE="$REAL_HOME/models/qwen2.5-3b-q4_k_m.gguf"
   HAS_MODEL=true
   ok "Model downloaded: $(basename "$MODEL_FILE")"
 fi
@@ -313,6 +320,7 @@ fi
 step "Step 10: Starting turbohaul-manager"
 
 echo "  Starting turbohaul-manager..."
+rm -f /tmp/turbohaul-setup.log
 "$VENV_DIR/bin/turbohaul-manager" --allow-public-bind --log-level info > /tmp/turbohaul-setup.log 2>&1 &
 TURBO_PID=$!
 sleep 4

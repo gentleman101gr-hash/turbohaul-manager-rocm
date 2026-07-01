@@ -118,12 +118,15 @@ class RocmBackend:
 
     def _run(self, *args: str) -> str | None:
         try:
-            return subprocess.check_output(
+            result = subprocess.run(
                 [self._path, *args],
+                capture_output=True,
                 text=True,
                 timeout=5,
-                stderr=subprocess.DEVNULL,
             )
+            if result.returncode != 0:
+                return None
+            return result.stdout
         except (FileNotFoundError, subprocess.SubprocessError, OSError):
             return None
 
@@ -177,7 +180,7 @@ class RocmBackend:
 
     def scan_compute_apps(self) -> list[dict]:
         raw = self._run("--showpids")
-        if not raw:
+        if not raw or "error" in raw.lower() or "usage" in raw.lower() or "ambiguous" in raw.lower():
             return []
         apps: list[dict] = []
         for line in raw.splitlines():

@@ -68,31 +68,37 @@ class TestNvidiaBackend:
             assert b.scan_compute_apps() == []
 
 
+def _mock_run(stdout="", returncode=0):
+    """Create a mock CompletedProcess for subprocess.run."""
+    result = MagicMock()
+    result.stdout = stdout
+    result.returncode = returncode
+    return result
+
+
 class TestRocmBackend:
     def test_get_gpu_memory_used_mib(self):
         b = RocmBackend()
         json_out = '{"card0": {"vram": {"total": 16777216000, "used": 4294967296}}}'
-        with patch.object(subprocess, "check_output", return_value=json_out):
+        with patch.object(subprocess, "run", return_value=_mock_run(json_out)):
             assert b.get_gpu_used_mib() == 4294967296 // (1024 * 1024)
 
     def test_get_gpu_memory_used_mib_none_on_error(self):
         b = RocmBackend()
         with patch.object(
-            subprocess, "check_output", side_effect=FileNotFoundError
+            subprocess, "run", side_effect=FileNotFoundError
         ):
             assert b.get_gpu_used_mib() is None
 
     def test_get_gpu_memory_used_mib_none_on_bad_json(self):
         b = RocmBackend()
-        with patch.object(
-            subprocess, "check_output", return_value="not json"
-        ):
+        with patch.object(subprocess, "run", return_value=_mock_run("not json")):
             assert b.get_gpu_used_mib() is None
 
     def test_get_gpu_free_mib(self):
         b = RocmBackend()
         json_out = '{"card0": {"vram": {"total": 16777216000, "used": 4294967296}}}'
-        with patch.object(subprocess, "check_output", return_value=json_out):
+        with patch.object(subprocess, "run", return_value=_mock_run(json_out)):
             free = b.get_gpu_free_mib()
             assert free is not None
             assert free[0] == (16777216000 - 4294967296) // (1024 * 1024)
@@ -100,14 +106,14 @@ class TestRocmBackend:
     def test_get_gpu_free_mib_none_on_error(self):
         b = RocmBackend()
         with patch.object(
-            subprocess, "check_output", side_effect=FileNotFoundError
+            subprocess, "run", side_effect=FileNotFoundError
         ):
             assert b.get_gpu_free_mib() is None
 
     def test_scan_compute_apps(self):
         b = RocmBackend()
         with patch.object(
-            subprocess, "check_output", return_value="PID  MEM\n1234 512\n"
+            subprocess, "run", return_value=_mock_run("PID  MEM\n1234 512\n")
         ):
             apps = b.scan_compute_apps()
             assert len(apps) == 1
@@ -115,13 +121,28 @@ class TestRocmBackend:
 
     def test_scan_compute_apps_empty(self):
         b = RocmBackend()
-        with patch.object(subprocess, "check_output", return_value=""):
+        with patch.object(subprocess, "run", return_value=_mock_run("")):
             assert b.scan_compute_apps() == []
 
     def test_scan_compute_apps_error(self):
         b = RocmBackend()
         with patch.object(
-            subprocess, "check_output", side_effect=FileNotFoundError
+            subprocess, "run", side_effect=FileNotFoundError
+        ):
+            assert b.scan_compute_apps() == []
+
+    def test_scan_compute_apps_nonzero_exit(self):
+        b = RocmBackend()
+        with patch.object(
+            subprocess, "run", return_value=_mock_run("error output", returncode=2)
+        ):
+            assert b.scan_compute_apps() == []
+
+    def test_scan_compute_apps_ambiguous_error(self):
+        b = RocmBackend()
+        err_text = "rocm-smi: error: ambiguous option: --showpid could match --showpids, --showpidgpus"
+        with patch.object(
+            subprocess, "run", return_value=_mock_run(err_text, returncode=2)
         ):
             assert b.scan_compute_apps() == []
 
@@ -134,7 +155,7 @@ class TestDetectBackend:
 
     def test_detect_backend_rocm(self):
         json_out = '{"card0": {"vram": {"total": 16777216000, "used": 4294967296}}}'
-        with patch.object(subprocess, "check_output", return_value=json_out):
+        with patch.object(subprocess, "run", return_value=_mock_run(json_out)):
             b = detect_backend("rocm")
             assert isinstance(b, RocmBackend)
 
