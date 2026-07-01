@@ -40,6 +40,21 @@ LLAMA_SERVER_HOST_PATH=/path/to/llama-server \
 
 For running on Windows with an AMD GPU via WSL2 + ROCDXG. This is the recommended path for Windows users with AMD Radeon desktop GPUs.
 
+#### Automated Setup (Recommended)
+
+Run the one-shot setup script from an **interactive WSL2 terminal**:
+
+```bash
+# Copy to WSL2
+cp /mnt/c/Users/<you>/path/to/turbohaul-manager/turbohaul-rocm-setup.sh /tmp/
+cd /tmp && chmod +x turbohaul-rocm-setup.sh
+
+# Run (requires sudo for first-time setup)
+sudo bash turbohaul-rocm-setup.sh
+```
+
+The script is idempotent — safe to re-run. It handles ROCm installation, libxml2 fixes, llama.cpp build, turbohaul install, and model setup. See below for manual steps if you prefer.
+
 #### Prerequisites
 
 1. **AMD Adrenalin 26.2.2+** driver installed on Windows
