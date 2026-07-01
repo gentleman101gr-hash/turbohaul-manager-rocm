@@ -122,6 +122,7 @@ class RocmBackend:
                 [self._path, *args],
                 text=True,
                 timeout=5,
+                stderr=subprocess.DEVNULL,
             )
         except (FileNotFoundError, subprocess.SubprocessError, OSError):
             return None
@@ -175,13 +176,13 @@ class RocmBackend:
         return None
 
     def scan_compute_apps(self) -> list[dict]:
-        raw = self._run("--showcomputeapps")
+        raw = self._run("--showpids")
         if not raw:
             return []
         apps: list[dict] = []
         for line in raw.splitlines():
             line = line.strip()
-            if not line or line.startswith("/") or "PID" in line:
+            if not line or line.startswith("/") or "PID" in line or "---" in line:
                 continue
             parts = line.split()
             if len(parts) >= 2:
