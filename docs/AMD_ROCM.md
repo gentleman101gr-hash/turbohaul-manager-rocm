@@ -165,7 +165,7 @@ storage:
   import_allowed_root: /var/lib/turbohaul/import-staging
   state_db_path: /var/lib/turbohaul/state.sqlite
 runtime:
-  llama_server_binary: /home/YOUR_USER/llama.cpp/build/bin/llama-server
+  llama_server_binary: /home/$USER/llama.cpp/build/bin/llama-server
   default_port_base: 11500
   gpu_backend: rocm
 ui:
